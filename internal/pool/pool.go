@@ -35,11 +35,21 @@ type Stats struct {
 	StaleConns uint32 // number of stale connections removed from the pool
 }
 
+// ConnReuseStrategy determines how Pooler.Get returns connections.
+type ConnReuseStrategy uint8
+
+const (
+	// AlwaysNewConn forces a new connection.
+	AlwaysNewConn ConnReuseStrategy = iota
+	// CachedOrNewConn returns a cached connection, if available, else creates a new connection.
+	CachedOrNewConn
+)
+
 type Pooler interface {
 	NewConn(context.Context) (*Conn, error)
 	CloseConn(*Conn) error
 
-	Get(context.Context) (*Conn, error)
+	Get(context.Context, ConnReuseStrategy) (*Conn, error)
 	Put(context.Context, *Conn)
 	Remove(context.Context, *Conn, error)
 
@@ -223,7 +233,7 @@ func (p *ConnPool) getLastDialError() error {
 }
 
 // Get returns existed connection from the pool or creates a new one.
-func (p *ConnPool) Get(ctx context.Context) (*Conn, error) {
+func (p *ConnPool) Get(ctx context.Context, reuse ConnReuseStrategy) (*Conn, error) {
 	if p.closed() {
 		return nil, ErrClosed
 	}
@@ -232,25 +242,27 @@ func (p *ConnPool) Get(ctx context.Context) (*Conn, error) {
 		return nil, err
 	}
 
-	for {
-		p.connsMu.Lock()
-		cn := p.popIdle()
-		p.connsMu.Unlock()
+	if reuse == CachedOrNewConn {
+		for {
+			p.connsMu.Lock()
+			cn := p.popIdle()
+			p.connsMu.Unlock()
 
-		if cn == nil {
-			break
+			if cn == nil {
+				break
+			}
+
+			if p.isStaleConn(cn) {
+				_ = p.CloseConn(cn)
+				continue
+			}
+
+			atomic.AddUint32(&p.stats.Hits, 1)
+			return cn, nil
 		}
 
-		if p.isStaleConn(cn) {
-			_ = p.CloseConn(cn)
-			continue
-		}
-
-		atomic.AddUint32(&p.stats.Hits, 1)
-		return cn, nil
+		atomic.AddUint32(&p.stats.Misses, 1)
 	}
-
-	atomic.AddUint32(&p.stats.Misses, 1)
 
 	newcn, err := p.newConn(ctx, true)
 	if err != nil {

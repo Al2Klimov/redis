@@ -25,7 +25,7 @@ func (p *SingleConnPool) CloseConn(cn *Conn) error {
 	return p.pool.CloseConn(cn)
 }
 
-func (p *SingleConnPool) Get(ctx context.Context) (*Conn, error) {
+func (p *SingleConnPool) Get(context.Context, ConnReuseStrategy) (*Conn, error) {
 	if p.stickyErr != nil {
 		return nil, p.stickyErr
 	}

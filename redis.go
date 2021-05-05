@@ -204,7 +204,7 @@ func (c *baseClient) getConn(ctx context.Context) (*pool.Conn, error) {
 }
 
 func (c *baseClient) _getConn(ctx context.Context) (*pool.Conn, error) {
-	cn, err := c.connPool.Get(ctx)
+	cn, err := c.connPool.Get(ctx, pool.CachedOrNewConn)
 	if err != nil {
 		return nil, err
 	}

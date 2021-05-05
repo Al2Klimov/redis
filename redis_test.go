@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/go-redis/redis/v8/internal/pool"
 	"net"
 	"testing"
 	"time"
@@ -202,7 +203,7 @@ var _ = Describe("Client", func() {
 		})
 
 		// Put bad connection in the pool.
-		cn, err := client.Pool().Get(ctx)
+		cn, err := client.Pool().Get(ctx, pool.CachedOrNewConn)
 		Expect(err).NotTo(HaveOccurred())
 
 		cn.SetNetConn(&badConn{})
@@ -240,7 +241,7 @@ var _ = Describe("Client", func() {
 	})
 
 	It("should update conn.UsedAt on read/write", func() {
-		cn, err := client.Pool().Get(context.Background())
+		cn, err := client.Pool().Get(context.Background(), pool.CachedOrNewConn)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(cn.UsedAt).NotTo(BeZero())
 
@@ -257,7 +258,7 @@ var _ = Describe("Client", func() {
 		err = client.Ping(ctx).Err()
 		Expect(err).NotTo(HaveOccurred())
 
-		cn, err = client.Pool().Get(context.Background())
+		cn, err = client.Pool().Get(context.Background(), pool.CachedOrNewConn)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(cn).NotTo(BeNil())
 		Expect(cn.UsedAt().After(createdAt)).To(BeTrue())

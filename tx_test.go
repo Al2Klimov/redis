@@ -2,6 +2,7 @@ package redis_test
 
 import (
 	"context"
+	"github.com/go-redis/redis/v8/internal/pool"
 	"strconv"
 	"sync"
 
@@ -125,7 +126,7 @@ var _ = Describe("Tx", func() {
 
 	It("should recover from bad connection", func() {
 		// Put bad connection in the pool.
-		cn, err := client.Pool().Get(context.Background())
+		cn, err := client.Pool().Get(context.Background(), pool.CachedOrNewConn)
 		Expect(err).NotTo(HaveOccurred())
 
 		cn.SetNetConn(&badConn{})

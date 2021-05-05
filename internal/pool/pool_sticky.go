@@ -65,12 +65,12 @@ func (p *StickyConnPool) CloseConn(cn *Conn) error {
 	return p.pool.CloseConn(cn)
 }
 
-func (p *StickyConnPool) Get(ctx context.Context) (*Conn, error) {
+func (p *StickyConnPool) Get(ctx context.Context, reuse ConnReuseStrategy) (*Conn, error) {
 	// In worst case this races with Close which is not a very common operation.
 	for i := 0; i < 1000; i++ {
 		switch atomic.LoadUint32(&p.state) {
 		case stateDefault:
-			cn, err := p.pool.Get(ctx)
+			cn, err := p.pool.Get(ctx, reuse)
 			if err != nil {
 				return nil, err
 			}

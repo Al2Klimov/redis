@@ -2,6 +2,7 @@ package redis_test
 
 import (
 	"context"
+	"github.com/go-redis/redis/v8/internal/pool"
 	"time"
 
 	"github.com/go-redis/redis/v8"
@@ -82,7 +83,7 @@ var _ = Describe("pool", func() {
 	})
 
 	It("removes broken connections", func() {
-		cn, err := client.Pool().Get(context.Background())
+		cn, err := client.Pool().Get(context.Background(), pool.CachedOrNewConn)
 		Expect(err).NotTo(HaveOccurred())
 		cn.SetNetConn(&badConn{})
 		client.Pool().Put(ctx, cn)
